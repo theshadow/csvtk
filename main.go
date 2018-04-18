@@ -14,7 +14,7 @@
 
 package main
 
-import "github.com/theshadow/tables/cmd"
+import "github.com/theshadow/csvtk/cmd"
 
 func main() {
 	cmd.Execute()

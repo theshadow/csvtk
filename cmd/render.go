@@ -45,8 +45,6 @@ type RenderOptions struct {
 	RowSeparator string
 }
 
-var renderOpts RenderOptions
-
 // renderCmd represents the render command
 var renderCmd = &cobra.Command{
 	Use:   "render",
@@ -63,96 +61,189 @@ Alignment:
   Alignment is specified using the '%s', '%s', '%s', and '%s' characters for left, right, center, and default respectively.`,
 		AlignLeft, AlignRight, AlignCenter, AlignDefault),
 	Example: `  Replacing the header in a CSV stream with an inline header.
-    - tail -n +1 contact-list.csv | csv render --header "FName,LName,Email,Phone"
+    - tail -n +1 contact-list.csv | csv render --header "FName LName Email Phone"
 
   Using the first line in the CSV stream as an inline header.
     - cat contact-list.csv | csv render --first-row-as-header
     `,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		align, err := cmd.Flags().GetString("align")
+		if err != nil {
+			return err
+		}
+
+		aln, err := FromString(align)
+		if err != nil {
+			return err
+		}
+
+		var alignCols []string
+		var alnCols []Alignment
+		if cmd.Flags().Changed("align-columns") {
+			alignCols, err = cmd.Flags().GetStringSlice("align-columns")
+			if err != nil {
+				return err
+			}
+
+			err = FromStringArray(alignCols, alnCols)
+			if err != nil {
+				return err
+			}
+		}
+
+		alignHeader, err := cmd.Flags().GetString("align-header")
+		if err != nil {
+			return err
+		}
+
+		var alnHeader Alignment
+		alnHeader, err = FromString(alignHeader)
+
+		alignFooter, err := cmd.Flags().GetString("align-footer")
+		if err != nil {
+			return err
+		}
+
+		var alnFooter Alignment
+		alnFooter, err = FromString(alignFooter)
+
+		autoFormattingHeaders, err := cmd.Flags().GetBool("auto-formatting-headers")
+		if err != nil {
+			return err
+		}
+
+		autoMergeCells, err := cmd.Flags().GetBool("auto-merge-cells")
+		if err != nil {
+			return err
+		}
+
+		autoWrap, err := cmd.Flags().GetBool("auto-wrap")
+		if err != nil {
+			return err
+		}
+
+		caption, err := cmd.Flags().GetString("caption")
+		if err != nil {
+			return err
+		}
+
+		centerSeparator, err := cmd.Flags().GetString("center-separator")
+		if err != nil {
+			return err
+		}
+
+		columnSeparator, err := cmd.Flags().GetString("column-separator")
+		if err != nil {
+			return err
+		}
+
+		colWidth, err := cmd.Flags().GetInt("col-width")
+		if err != nil {
+			return err
+		}
+
+		firstRowAsHeader, err := cmd.Flags().GetBool("first-row-as-header")
+		if err != nil {
+			return err
+		}
+
+		footer, err := cmd.Flags().GetStringSlice("footer")
+		if err != nil {
+			return err
+		}
+
+		header, err := cmd.Flags().GetStringSlice("header")
+		if err != nil {
+			return err
+		}
+
+		newline, err := cmd.Flags().GetString("newline")
+		if err != nil {
+			return err
+		}
+
+		reflow, err := cmd.Flags().GetBool("reflow")
+		if err != nil {
+			return err
+		}
+
+		rowLine, err := cmd.Flags().GetBool("row-line")
+		if err != nil {
+			return err
+		}
+
+		rowSeparator, err := cmd.Flags().GetString("row-separator")
+		if err != nil {
+			return err
+		}
+
+		renderOpts := RenderOptions{
+			Align: aln,
+			AlignColumns: alnCols,
+			AlignHeader: alnHeader,
+			AlignFooter: alnFooter,
+			AutoFormattingHeaders: autoFormattingHeaders,
+			AutoMergeCells: autoMergeCells,
+			AutoWrap: autoWrap,
+			Caption: caption,
+			CenterSeparator: centerSeparator,
+			ColumnSeparator: columnSeparator,
+			ColWidth: colWidth,
+			FirstRowAsHeader: firstRowAsHeader,
+			Footer: footer,
+			Header: header,
+			Newline: newline,
+			Reflow: reflow,
+			RowLine: rowLine,
+			RowSeparator: rowSeparator,
+		}
+
 		return Render(os.Stdin, os.Stdout, renderOpts)
 	},
 }
 
 func init() {
 	RootCmd.AddCommand(renderCmd)
-	align := *renderCmd.Flags().StringP("align", "a", string(AlignDefault),
+	renderCmd.Flags().StringP("align", "a", string(AlignDefault),
 		"Defines the text alignment for the entire table.")
-	alignCols := *renderCmd.Flags().StringArrayP("align-columns", "", []string{},
+	renderCmd.Flags().StringSliceP("align-columns", "", []string{},
 	"Defines the alignment for each column individually.")
-	alignHeader := *renderCmd.Flags().StringP("align-header", "", string(AlignDefault),
+	renderCmd.Flags().StringP("align-header", "", string(AlignDefault),
 		"Defines the alignment for the header.")
-	alignFooter := *renderCmd.Flags().StringP("align-footer", "", string(AlignDefault),
+	renderCmd.Flags().StringP("align-footer", "", string(AlignDefault),
 		"Defines the alignment for the header columns.")
-	autoFormattingHeaders := *renderCmd.Flags().BoolP("auto-formatting-headers", "", true,
+	renderCmd.Flags().BoolP("auto-formatting-headers", "", true,
 		"When specified auto formatting of the headers will be disabled.")
-	autoMergeCells := *renderCmd.Flags().BoolP("auto-merge-cells", "", false,
+	renderCmd.Flags().BoolP("auto-merge-cells", "", false,
 		"Defines the alignment for each footer column individually.")
-	autoWrap := *renderCmd.Flags().BoolP("auto-wrap", "", true,
+	renderCmd.Flags().BoolP("auto-wrap", "", true,
 		"When set the text will not be automatically wrapped.")
-	caption := *renderCmd.Flags().StringP("caption", "c", "",
+	renderCmd.Flags().StringP("caption", "c", "",
 		"Defines the caption message to be displayed with the table.")
-	centerSeparator := *renderCmd.Flags().StringP("center-separator", "", tw.CENTER,
+	renderCmd.Flags().StringP("center-separator", "", tw.CENTER,
 		"Defines what character will separate center columns.")
-	columnSeparator := *renderCmd.Flags().StringP("column-separator", "", tw.COLUMN,
+	renderCmd.Flags().StringP("column-separator", "", tw.COLUMN,
 		"Defines what character will separate each column.")
-	colWidth := *renderCmd.Flags().IntP("col-width", "w", tw.MAX_ROW_WIDTH,
+	renderCmd.Flags().IntP("col-width", "w", tw.MAX_ROW_WIDTH,
 		"Defines the fixed width for each column.")
-	firstRowAsHeader := *renderCmd.Flags().BoolP("first-row-as-header", "", false,
+	renderCmd.Flags().BoolP("first-row-as-header", "", false,
 		"When specified the first row will be treated as the headers.")
-	footer := *renderCmd.Flags().StringArrayP("footer", "", []string{},
+	renderCmd.Flags().StringSliceP("footer", "", []string{},
 	"Defines what the footer columns should be.")
-	header := *renderCmd.Flags().StringArrayP("header", "", []string{},
+	renderCmd.Flags().StringSlice("header", []string{},
 	"Defines what the header columns should be.")
 	/*input := *renderCmd.Flags().StringP("input", "i", "",
 		"Define a file to read from instead of Stdin.")*/
-	newline := *renderCmd.Flags().StringP("newline", "", tw.NEWLINE,
+	renderCmd.Flags().StringP("newline", "", tw.NEWLINE,
 		"Defines what character will be used at the end of a line.")
-	reflow := *renderCmd.Flags().BoolP("reflow", "", true,
+	renderCmd.Flags().BoolP("reflow", "", true,
 		"When specified the text will not be automatically re-flowed.")
 	/*output := *renderCmd.Flags().StringP("output", "o", "",
 		"Define a file to write to instead of Stdout.")*/
-	rowLine := *renderCmd.Flags().BoolP("row-line", "", false,
+	renderCmd.Flags().BoolP("row-line", "", false,
 		"When specified each row will be delimited with a row line.")
-	rowSeparator := *renderCmd.Flags().StringP("row-separator", "", tw.ROW,
+	renderCmd.Flags().StringP("row-separator", "", tw.ROW,
 		"Defines the character used to separate each row.")
-
-	aln, err := FromString(align)
-	if err != nil {
-	}
-
-	var alnCols []Alignment
-	err = FromStringArray(alignCols, alnCols)
-	if err != nil {
-	}
-
-	var alnHeader Alignment
-	alnHeader, err = FromString(alignHeader)
-
-	var alnFooter Alignment
-	alnFooter, err = FromString(alignFooter)
-
-	renderOpts = RenderOptions{
-		Align: aln,
-		AlignColumns: alnCols,
-		AlignHeader: alnHeader,
-		AlignFooter: alnFooter,
-		AutoFormattingHeaders: autoFormattingHeaders,
-		AutoMergeCells: autoMergeCells,
-		AutoWrap: autoWrap,
-		Caption: caption,
-		CenterSeparator: centerSeparator,
-		ColumnSeparator: columnSeparator,
-		ColWidth: colWidth,
-		FirstRowAsHeader: firstRowAsHeader,
-		Footer: footer,
-		Header: header,
-		Newline: newline,
-		Reflow: reflow,
-		RowLine: rowLine,
-		RowSeparator: rowSeparator,
-	}
-
-	fmt.Printf("%#v\n", renderOpts)
 }
 
 func Render(r io.Reader, w io.Writer, opts RenderOptions) error {
@@ -236,7 +327,6 @@ func ConfigTableWriter(t *tw.Table, opts RenderOptions) {
 	}
 
 	if len(opts.Header) > 0 {
-		fmt.Println("testing")
 		t.SetHeader(opts.Header)
 	}
 
