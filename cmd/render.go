@@ -15,35 +15,15 @@
 package cmd
 
 import (
-	"encoding/csv"
 	"fmt"
-	"os"
 	"io"
+	"os"
 
 	tw "github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
+	"bufio"
+	"encoding/csv"
 )
-
-type RenderOptions struct {
-	Align Alignment
-	AlignColumns []Alignment
-	AlignHeader Alignment
-	AlignFooter Alignment
-	AutoFormattingHeaders bool
-	AutoMergeCells bool
-	AutoWrap bool
-	Caption string
-	CenterSeparator string
-	ColumnSeparator string
-	ColWidth int
-	FirstRowAsHeader bool
-	Footer []string
-	Header []string
-	Newline string
-	Reflow bool
-	RowLine bool
-	RowSeparator string
-}
 
 // renderCmd represents the render command
 var renderCmd = &cobra.Command{
@@ -77,18 +57,15 @@ Alignment:
 			return err
 		}
 
-		var alignCols []string
-		var alnCols []Alignment
-		if cmd.Flags().Changed("align-columns") {
-			alignCols, err = cmd.Flags().GetStringSlice("align-columns")
-			if err != nil {
-				return err
-			}
+		alignCols, err := cmd.Flags().GetStringSlice("align-columns")
+		if err != nil {
+			return err
+		}
 
-			err = FromStringArray(alignCols, alnCols)
-			if err != nil {
-				return err
-			}
+		var alnCols []Alignment
+		err = FromStringArray(alignCols, alnCols)
+		if err != nil {
+			return err
 		}
 
 		alignHeader, err := cmd.Flags().GetString("align-header")
@@ -177,6 +154,16 @@ Alignment:
 			return err
 		}
 
+		input, err := cmd.Flags().GetString("input")
+		if err != nil {
+			return err
+		}
+
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			return err
+		}
+
 		renderOpts := RenderOptions{
 			Align: aln,
 			AlignColumns: alnCols,
@@ -198,7 +185,33 @@ Alignment:
 			RowSeparator: rowSeparator,
 		}
 
-		return Render(os.Stdin, os.Stdout, renderOpts)
+		var in io.Reader = os.Stdin
+		var out io.WriteCloser = os.Stdout
+
+		if len(input) > 0 {
+			fIn, err := os.Open(input)
+			defer fIn.Close()
+
+			if err != nil {
+				return err
+			}
+
+			in = bufio.NewReader(fIn)
+		}
+
+		if len(output) > 0 {
+			fOut, err := os.Create(output)
+			out = NewBufWriteCloser(fOut, bufio.NewWriter(fOut))
+			if err != nil {
+				return err
+			}
+		}
+
+		csvR := csv.NewReader(in)
+
+		err = Render(csvR, out, renderOpts)
+		out.Close()
+		return err
 	},
 }
 
@@ -208,88 +221,42 @@ func init() {
 		"Defines the text alignment for the entire table.")
 	renderCmd.Flags().StringSliceP("align-columns", "", []string{},
 	"Defines the alignment for each column individually.")
-	renderCmd.Flags().StringP("align-header", "", string(AlignDefault),
+	renderCmd.Flags().String("align-header", string(AlignDefault),
 		"Defines the alignment for the header.")
-	renderCmd.Flags().StringP("align-footer", "", string(AlignDefault),
+	renderCmd.Flags().String("align-footer", string(AlignDefault),
 		"Defines the alignment for the header columns.")
 	renderCmd.Flags().BoolP("auto-formatting-headers", "", true,
 		"When specified auto formatting of the headers will be disabled.")
 	renderCmd.Flags().BoolP("auto-merge-cells", "", false,
 		"Defines the alignment for each footer column individually.")
-	renderCmd.Flags().BoolP("auto-wrap", "", true,
+	renderCmd.Flags().Bool("auto-wrap", true,
 		"When set the text will not be automatically wrapped.")
 	renderCmd.Flags().StringP("caption", "c", "",
 		"Defines the caption message to be displayed with the table.")
-	renderCmd.Flags().StringP("center-separator", "", tw.CENTER,
+	renderCmd.Flags().String("center-separator", tw.CENTER,
 		"Defines what character will separate center columns.")
-	renderCmd.Flags().StringP("column-separator", "", tw.COLUMN,
+	renderCmd.Flags().String("column-separator", tw.COLUMN,
 		"Defines what character will separate each column.")
 	renderCmd.Flags().IntP("col-width", "w", tw.MAX_ROW_WIDTH,
 		"Defines the fixed width for each column.")
-	renderCmd.Flags().BoolP("first-row-as-header", "", false,
+	renderCmd.Flags().Bool("first-row-as-header", false,
 		"When specified the first row will be treated as the headers.")
 	renderCmd.Flags().StringSliceP("footer", "", []string{},
 	"Defines what the footer columns should be.")
 	renderCmd.Flags().StringSlice("header", []string{},
 	"Defines what the header columns should be.")
-	/*input := *renderCmd.Flags().StringP("input", "i", "",
-		"Define a file to read from instead of Stdin.")*/
+	renderCmd.Flags().StringP("input", "i", "",
+		"Define a file to read from instead of Stdin.")
 	renderCmd.Flags().StringP("newline", "", tw.NEWLINE,
 		"Defines what character will be used at the end of a line.")
 	renderCmd.Flags().BoolP("reflow", "", true,
 		"When specified the text will not be automatically re-flowed.")
-	/*output := *renderCmd.Flags().StringP("output", "o", "",
-		"Define a file to write to instead of Stdout.")*/
+	renderCmd.Flags().StringP("output", "o", "",
+		"Define a file to write to instead of Stdout.")
 	renderCmd.Flags().BoolP("row-line", "", false,
 		"When specified each row will be delimited with a row line.")
 	renderCmd.Flags().StringP("row-separator", "", tw.ROW,
 		"Defines the character used to separate each row.")
-}
-
-func Render(r io.Reader, w io.Writer, opts RenderOptions) error {
-	csvR := csv.NewReader(r)
-	tblW := tw.NewWriter(w)
-
-	ConfigTableWriter(tblW, opts)
-
-	ch := make(chan []string)
-	done := make(chan struct{})
-
-	go func() {
-		for {
-			rec, err := csvR.Read()
-			if err == io.EOF {
-				break
-			}
-
-			if err != nil {
-				break
-			}
-
-			ch <- rec
-		}
-
-		close(ch)
-	}()
-
-	go func() {
-		first := true
-		for rec := range ch {
-			if first {
-				first = false
-				tblW.SetHeader(rec)
-				continue
-			}
-			tblW.Append(rec)
-		}
-
-		tblW.Render()
-		close(done)
-	}()
-
-	<-done
-
-	return nil
 }
 
 func ConfigTableWriter(t *tw.Table, opts RenderOptions) {
@@ -333,4 +300,21 @@ func ConfigTableWriter(t *tw.Table, opts RenderOptions) {
 	t.SetNewLine(opts.Newline)
 	t.SetReflowDuringAutoWrap(opts.Reflow)
 	t.SetRowSeparator(opts.RowSeparator)
+}
+
+// Provides a WriteCloser for a bufio.Writer.
+type BufWriteCloser struct {
+	f *os.File
+	*bufio.Writer
+}
+
+func NewBufWriteCloser(f *os.File, buf *bufio.Writer) io.WriteCloser {
+	return &BufWriteCloser{f, buf}
+}
+
+func (b *BufWriteCloser) Close() error {
+	if err := b.Flush(); err != nil {
+		return err
+	}
+	return b.f.Close()
 }
