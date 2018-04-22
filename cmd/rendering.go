@@ -34,16 +34,18 @@ func Render(r *csv.Reader, w io.Writer, opts RenderOptions) error {
 	ConfigTableWriter(tblW, opts)
 
 	ch := make(chan []string)
-	done := make(chan struct{})
+	done := make(chan error)
 
 	go func() {
 		defer close(ch)
+
 		for {
 			rec, err := r.Read()
 			if err == io.EOF {
 				break
 			}
 			if err != nil {
+				done <- err
 				break
 			}
 			ch <- rec
@@ -64,8 +66,12 @@ func Render(r *csv.Reader, w io.Writer, opts RenderOptions) error {
 		}
 	}()
 
-	<-done
-	tblW.Render()
+	err := <-done
+	<-ch
 
-	return nil
+	if err != nil {
+		tblW.Render()
+	}
+
+	return err
 }
