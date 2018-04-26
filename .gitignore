@@ -1,3 +1,31 @@
-.idea/
-vendor/
-audify-rpc/audify-rpc
+
+# Created by https://www.gitignore.io/api/go,intellij+iml
+
+### Go ###
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, build with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Reason: https://github.com/joeblau/gitignore.io/issues/186#issuecomment-249601023
+
+*.iml
+modules.xml
+.idea/misc.xml
+*.ipr
+
+
+# End of https://www.gitignore.io/api/go,intellij+iml
+
+##### PROJECT
+
+bin
+vendor

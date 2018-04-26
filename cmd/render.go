@@ -19,10 +19,10 @@ import (
 	"io"
 	"os"
 
-	tw "github.com/olekukonko/tablewriter"
-	"github.com/spf13/cobra"
 	"bufio"
 	"encoding/csv"
+	tw "github.com/olekukonko/tablewriter"
+	"github.com/spf13/cobra"
 )
 
 // renderCmd represents the render command
@@ -165,24 +165,24 @@ Alignment:
 		}
 
 		renderOpts := RenderOptions{
-			Align: aln,
-			AlignColumns: alnCols,
-			AlignHeader: alnHeader,
-			AlignFooter: alnFooter,
+			Align:                 aln,
+			AlignColumns:          alnCols,
+			AlignHeader:           alnHeader,
+			AlignFooter:           alnFooter,
 			AutoFormattingHeaders: autoFormattingHeaders,
-			AutoMergeCells: autoMergeCells,
-			AutoWrap: autoWrap,
-			Caption: caption,
-			CenterSeparator: centerSeparator,
-			ColumnSeparator: columnSeparator,
-			ColWidth: colWidth,
-			FirstRowAsHeader: firstRowAsHeader,
-			Footer: footer,
-			Header: header,
-			Newline: newline,
-			Reflow: reflow,
-			RowLine: rowLine,
-			RowSeparator: rowSeparator,
+			AutoMergeCells:        autoMergeCells,
+			AutoWrap:              autoWrap,
+			Caption:               caption,
+			CenterSeparator:       centerSeparator,
+			ColumnSeparator:       columnSeparator,
+			ColWidth:              colWidth,
+			FirstRowAsHeader:      firstRowAsHeader,
+			Footer:                footer,
+			Header:                header,
+			Newline:               newline,
+			Reflow:                reflow,
+			RowLine:               rowLine,
+			RowSeparator:          rowSeparator,
 		}
 
 		var in io.Reader = os.Stdin
@@ -220,7 +220,7 @@ func init() {
 	renderCmd.Flags().StringP("align", "a", string(AlignDefault),
 		"Defines the text alignment for the entire table.")
 	renderCmd.Flags().StringSliceP("align-columns", "", []string{},
-	"Defines the alignment for each column individually.")
+		"Defines the alignment for each column individually.")
 	renderCmd.Flags().String("align-header", string(AlignDefault),
 		"Defines the alignment for the header.")
 	renderCmd.Flags().String("align-footer", string(AlignDefault),
@@ -242,9 +242,9 @@ func init() {
 	renderCmd.Flags().Bool("first-row-as-header", false,
 		"When specified the first row will be treated as the headers.")
 	renderCmd.Flags().StringSliceP("footer", "", []string{},
-	"Defines what the footer columns should be.")
+		"Defines what the footer columns should be.")
 	renderCmd.Flags().StringSlice("header", []string{},
-	"Defines what the header columns should be.")
+		"Defines what the header columns should be.")
 	renderCmd.Flags().StringP("input", "i", "",
 		"Define a file to read from instead of Stdin.")
 	renderCmd.Flags().StringP("newline", "", tw.NEWLINE,
@@ -259,6 +259,7 @@ func init() {
 		"Defines the character used to separate each row.")
 }
 
+// ConfigTableWriter takes a pointer to a Table and configures it based on the passed in opts
 func ConfigTableWriter(t *tw.Table, opts RenderOptions) {
 	if len(opts.AlignColumns) > 0 {
 		var alignments []int
@@ -302,16 +303,18 @@ func ConfigTableWriter(t *tw.Table, opts RenderOptions) {
 	t.SetRowSeparator(opts.RowSeparator)
 }
 
-// Provides a WriteCloser for a bufio.Writer.
+// BufWriteCloser provides a WriteCloser for a bufio.Writer
 type BufWriteCloser struct {
 	f *os.File
 	*bufio.Writer
 }
 
+// NewBufWriteCloser creates a new BufWriteCloser type using f to read from and buf to write to.
 func NewBufWriteCloser(f *os.File, buf *bufio.Writer) io.WriteCloser {
 	return &BufWriteCloser{f, buf}
 }
 
+// Close when done with the BufWriteCloser you should call Close() to clean up resources.
 func (b *BufWriteCloser) Close() error {
 	if err := b.Flush(); err != nil {
 		return err

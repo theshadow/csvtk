@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 package cmd
 
 import (
@@ -21,18 +20,26 @@ import (
 	tw "github.com/olekukonko/tablewriter"
 )
 
-var UnknownAlignment = fmt.Errorf("unknown alignment")
+// ErrUnknownAlignment Returned when the passed in alignment character isn't a valid Alignment type.
+var ErrUnknownAlignment = fmt.Errorf("unknown alignment")
 
+// Alignment An alignment specifies how a header, column, or footer should be aligned while rendering.
 type Alignment string
 
 const (
+	// AlignDefault will align the header, column, or footer in the default manner.
 	AlignDefault Alignment = "="
+	// AlignCenter will align the header, column, or footer to the center.
 	AlignCenter Alignment = "-"
+	// AlignLeft will align the header, column, or footer to the left.
 	AlignLeft Alignment = "<"
+	// AlignRight will align the header, column, or footer to the right.
 	AlignRight Alignment = ">"
+	// AlignEmpty only used during an error state.
 	AlignEmpty Alignment = ""
 )
 
+// ToString will convert the Alignment type into its associated string value.
 func (a Alignment) ToString() string {
 	switch a {
 	case AlignDefault:
@@ -47,6 +54,7 @@ func (a Alignment) ToString() string {
 	return ""
 }
 
+// ToTableWriter will convert the alignment to a TableWriter format
 func (a Alignment) ToTableWriter() int {
 	switch a {
 	case AlignDefault:
@@ -61,6 +69,8 @@ func (a Alignment) ToTableWriter() int {
 	return -1
 }
 
+// FromString accepts a string and converts it into an Alignment type. If the alignment is invalid it will return
+// an ErrUnknownAlignment
 func FromString(s string) (Alignment, error) {
 	switch s {
 	case "=":
@@ -72,9 +82,11 @@ func FromString(s string) (Alignment, error) {
 	case ">":
 		return AlignRight, nil
 	}
-	return AlignEmpty, UnknownAlignment
+	return AlignEmpty, ErrUnknownAlignment
 }
 
+// FromStringArray accepts an array of strings and attempts to convert them into an Alignment type. Any error will
+// break the conversion and return an ErrUnknownAlignment
 func FromStringArray(strs []string, out []Alignment) error {
 	for _, s := range strs {
 		a, err := FromString(s)
@@ -85,4 +97,3 @@ func FromStringArray(strs []string, out []Alignment) error {
 	}
 	return nil
 }
-
