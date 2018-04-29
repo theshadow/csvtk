@@ -76,7 +76,7 @@ func Render(r *csv.Reader, w io.Writer, opts RenderOptions) error {
 	err := <-done
 	<-ch
 
-	if err != nil {
+	if err == nil {
 		tblW.Render()
 	}
 
